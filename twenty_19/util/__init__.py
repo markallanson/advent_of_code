@@ -1,7 +1,9 @@
 import sys
+import abc
 from enum import Enum
 
 debug = sys.settrace is not None
+
 
 class Instructions(Enum):
     ADD = 1
@@ -42,6 +44,17 @@ class OpMeta:
         return "OpCode: {}, PMode: {}".format(self.opcode, self.pmodes)
 
 class Instruction:
+    """ Base class for all instruction implementation. Contains common instruction functionality """
+    def __init__(self, param_count=0):
+        self.param_count = param_count
+
+    def read_params(self, memory, instruction_pointer, op_meta):
+        return [
+            self.read(memory, memory[instruction_pointer + param_num], op_meta.pmodes[param_num - 1])
+            for param_num
+            in range(1, self.param_count + 1)
+        ]
+
     def write(self, memory, address, value):
         existing = memory[address]
         if debug:
@@ -60,40 +73,59 @@ class Instruction:
         return value
 
 
-class Add(Instruction):
+class ReadWriteInstruction(Instruction, metaclass=abc.ABCMeta):
+    """
+    A common base method for simple instructions that read and write values from memory without fiddling with
+    the instruction pointer.
+    """
+    def __init__(self, param_count=0):
+        super().__init__(param_count)
+
     def execute(self, memory, op_meta, instruction_pointer):
-        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
-        result = a + b
+        params = self.read_params(memory, instruction_pointer, op_meta)
+        result = self.calculate(params)
+        if result is not None:
+            self.write(memory, memory[instruction_pointer + self.param_count + 1], result)
+            return instruction_pointer + self.param_count + 2
+        return instruction_pointer + self.param_count + 1
+
+    @abc.abstractmethod
+    def calculate(self, params):
+        """calculate the value and return the result. Return none if no result"""
+
+
+class Add(ReadWriteInstruction):
+    def __init__(self):
+        super().__init__(2)
+
+    def calculate(self, params):
+        result = params[0] + params[1]
         if debug:
-            print("Add {} + {} = {}".format(a, b, result))
-        self.write(memory, memory[instruction_pointer + 3], result)
-        return instruction_pointer + 4
+            print("Add {} + {} = {}".format(params[0], params[1], result))
+        return result
 
+class Multiply(ReadWriteInstruction):
+    def __init__(self):
+        super().__init__(2)
 
-class Multiply(Instruction):
-    def execute(self, memory, op_meta, instruction_pointer):
-        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
-        result = a * b
+    def calculate(self, params):
+        result = params[0] * params[1]
         if debug:
-            print("Mul {} * {} = {}".format(a, b, result))
-        self.write(memory, memory[instruction_pointer + 3], result)
-        return instruction_pointer + 4
+            print("Mul {} * {} = {}".format(params[0], params[1], result))
+        return result
 
 
-class Input(Instruction):
-    def execute(self, memory, op_meta, instruction_pointer):
-        val = int(input("Input: "))
-        self.write(memory, memory[instruction_pointer + 1], val)
-        return instruction_pointer + 2
+class Input(ReadWriteInstruction):
+    def calculate(self, params):
+        return int(input("Input: "))
 
 
-class Output(Instruction):
-    def execute(self, memory, op_meta, instruction_pointer):
-        val = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        print("Output: ", val)
-        return instruction_pointer + 2
+class Output(ReadWriteInstruction):
+    def __init__(self):
+        super().__init__(1)
+
+    def calculate(self, params):
+        print("Output: ", params[0])
 
 
 class Term(Instruction):
@@ -102,49 +134,55 @@ class Term(Instruction):
             print("TERM")
         return -1
 
+
 class JumpIfTrue(Instruction):
+    def __init__(self):
+        super().__init__(2)
+
     def execute(self, memory, op_meta, instruction_pointer):
-        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
-        is_true = a != 0
+        input = self.read_params(memory, instruction_pointer, op_meta)
+        is_true = input[0] != 0
         if debug:
-            print("Is True? {} != 0 == {}".format(a, is_true))
+            print("Is True? {} != 0 == {}".format(input[0], is_true))
         if is_true:
-            return b
+            return input[1]
         return instruction_pointer + 3
+
 
 class JumpIfFalse(Instruction):
+    def __init__(self):
+        super().__init__(2)
+
     def execute(self, memory, op_meta, instruction_pointer):
-        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
-        is_false = a == 0
+        input = self.read_params(memory, instruction_pointer, op_meta)
+        is_false = input[0] == 0
         if debug:
-            print("Is False? {} == 0 == {}".format(a, is_false))
+            print("Is False? {} == 0 == {}".format(input[0], is_false))
         if is_false:
-            return b
+            return input[1]
         return instruction_pointer + 3
 
 
-class Equals(Instruction):
-    def execute(self, memory, op_meta, instruction_pointer):
-        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
-        are_equal = a == b
+class Equals(ReadWriteInstruction):
+    def __init__(self):
+        super().__init__(2)
+
+    def calculate(self, params):
+        are_equal = params[0] == params[1]
         if debug:
-            print("Are Equal? {} == {} == {}".format(a, b, are_equal))
-        self.write(memory, memory[instruction_pointer + 3], 1 if are_equal else 0)
-        return instruction_pointer + 4
+            print("Are Equal? {} == {} == {}".format(params[0], params[1], are_equal))
+        return 1 if are_equal else 0
 
 
-class LessThan(Instruction):
-    def execute(self, memory, op_meta, instruction_pointer):
-        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
-        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
-        less_than = a < b
+class LessThan(ReadWriteInstruction):
+    def __init__(self):
+        super().__init__(2)
+
+    def calculate(self, params):
+        less_than = params[0] < params[1]
         if debug:
-            print("Less Than? {} < {} == {}".format(a, b, less_than))
-        self.write(memory, memory[instruction_pointer + 3], 1 if less_than else 0)
-        return instruction_pointer + 4
+            print("Less Than? {} < {} == {}".format(params[0], params[1], less_than))
+        return 1 if less_than else 0
 
 
 class IntCodeComputer:

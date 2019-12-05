@@ -1,12 +1,17 @@
+import sys
 from enum import Enum
 
-debug = False
+debug = sys.settrace is not None
 
 class Instructions(Enum):
     ADD = 1
     MUL = 2
     INPUT = 3
     OUTPUT = 4
+    JMP_TRUE = 5
+    JMP_FALSE = 6
+    LESS_THAN = 7
+    EQUALS = 8
     TERM = 99
 
     def __str__(self):
@@ -97,6 +102,50 @@ class Term(Instruction):
             print("TERM")
         return -1
 
+class JumpIfTrue(Instruction):
+    def execute(self, memory, op_meta, instruction_pointer):
+        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
+        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
+        is_true = a != 0
+        if debug:
+            print("Is True? {} != 0 == {}".format(a, is_true))
+        if is_true:
+            return b
+        return instruction_pointer + 3
+
+class JumpIfFalse(Instruction):
+    def execute(self, memory, op_meta, instruction_pointer):
+        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
+        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
+        is_false = a == 0
+        if debug:
+            print("Is False? {} == 0 == {}".format(a, is_false))
+        if is_false:
+            return b
+        return instruction_pointer + 3
+
+
+class Equals(Instruction):
+    def execute(self, memory, op_meta, instruction_pointer):
+        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
+        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
+        are_equal = a == b
+        if debug:
+            print("Are Equal? {} == {} == {}".format(a, b, are_equal))
+        self.write(memory, memory[instruction_pointer + 3], 1 if are_equal else 0)
+        return instruction_pointer + 4
+
+
+class LessThan(Instruction):
+    def execute(self, memory, op_meta, instruction_pointer):
+        a = self.read(memory, memory[instruction_pointer + 1], op_meta.pmodes[0])
+        b = self.read(memory, memory[instruction_pointer + 2], op_meta.pmodes[1])
+        less_than = a < b
+        if debug:
+            print("Less Than? {} < {} == {}".format(a, b, less_than))
+        self.write(memory, memory[instruction_pointer + 3], 1 if less_than else 0)
+        return instruction_pointer + 4
+
 
 class IntCodeComputer:
     def __init__(self, memory):
@@ -107,6 +156,10 @@ class IntCodeComputer:
             Instructions.MUL: Multiply(),
             Instructions.INPUT: Input(),
             Instructions.OUTPUT: Output(),
+            Instructions.JMP_TRUE: JumpIfTrue(),
+            Instructions.JMP_FALSE: JumpIfFalse(),
+            Instructions.LESS_THAN: LessThan(),
+            Instructions.EQUALS: Equals(),
             Instructions.TERM: Term()
         }
 
@@ -114,6 +167,8 @@ class IntCodeComputer:
         """ Computes and intprogram """
         instruction_pointer = 0
         while True:
+            if debug:
+                print(self.memory)
             op_meta = OpMeta(self.memory[instruction_pointer])
             if op_meta.opcode not in self.instructions.keys():
                 raise AssertionError("Unknown Instruction '{}'".format(op_meta))

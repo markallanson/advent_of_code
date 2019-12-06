@@ -26,6 +26,22 @@ orbits_test2 = [
     "K)L",
 ]
 
+orbits_santa_test = [
+    "COM)B",
+    "B)C",
+    "C)D",
+    "D)E",
+    "E)F",
+    "B)G",
+    "G)H",
+    "D)I",
+    "E)J",
+    "J)K",
+    "K)L",
+    "K)YOU",
+    "I)SAN",
+]
+
 orbits = [
     "XV5)LZ5",
     "6JC)7ZG",

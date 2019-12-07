@@ -18,12 +18,7 @@ def amplify(phases, input):
         amp = Amplifier(phase, io_buffers[bufNum - 1], io_buffers[bufNum])
         amplifiers.append(amp)
 
-    ampNum = 0
-    for amplifier in amplifiers:
-        if ampNum == 0: amplifier.amplify(input)
-        else: amplifier.amplify()
-        ampNum += 1
-
+    io_buffers[0].write_to_buffer(0)
     return io_buffers[-1].get_from_buffer()
 
 amplifications = []

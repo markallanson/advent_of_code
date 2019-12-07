@@ -2,7 +2,8 @@ import sys
 import abc
 from enum import Enum
 
-debug = sys.settrace is not None
+#debug = sys.settrace is not None
+debug = False
 
 
 class Instructions(Enum):
@@ -213,7 +214,7 @@ class IntCodeComputer:
         }
 
 
-    def compute(self, input=None):
+    def compute(self):
         """ Computes and intprogram """
         instruction_pointer = 0
         while True:

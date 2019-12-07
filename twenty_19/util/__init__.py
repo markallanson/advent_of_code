@@ -116,16 +116,21 @@ class Multiply(ReadWriteInstruction):
 
 
 class Input(ReadWriteInstruction):
+    def __init__(self, input_func):
+        super().__init__()
+        self.input_func = input_func
+
     def calculate(self, params):
-        return int(input("Input: "))
+        return int(self.input_func())
 
 
 class Output(ReadWriteInstruction):
-    def __init__(self):
+    def __init__(self, out_func):
         super().__init__(1)
+        self.out_func = out_func
 
     def calculate(self, params):
-        print("Output: ", params[0])
+        self.out_func(params[0])
 
 
 class Term(Instruction):
@@ -185,21 +190,28 @@ class LessThan(ReadWriteInstruction):
         return 1 if less_than else 0
 
 
+def print_output(output):
+    print("Output: ", output)
+
+def console_input():
+    return input("Input: ")
+
 class IntCodeComputer:
-    def __init__(self, memory):
+    def __init__(self, memory, input_func=console_input, out_func=print_output):
         self.memory = list(memory)
 
         self.instructions = {
             Instructions.ADD: Add(),
             Instructions.MUL: Multiply(),
-            Instructions.INPUT: Input(),
-            Instructions.OUTPUT: Output(),
+            Instructions.INPUT: Input(input_func),
+            Instructions.OUTPUT: Output(out_func),
             Instructions.JMP_TRUE: JumpIfTrue(),
             Instructions.JMP_FALSE: JumpIfFalse(),
             Instructions.LESS_THAN: LessThan(),
             Instructions.EQUALS: Equals(),
             Instructions.TERM: Term()
         }
+
 
     def compute(self, input=None):
         """ Computes and intprogram """

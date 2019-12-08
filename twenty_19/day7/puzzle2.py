@@ -1,4 +1,5 @@
-from twenty_19.day7 import Amplifier, IOBuffer
+from twenty_19.day7 import Amplifier
+from twenty_19.util import IOBuffer
 
 amplifications = []
 
@@ -18,11 +19,11 @@ def amplify(phases, input):
             phase,
             in_buf,
             out_buf,
-            lambda x: final_value(io_buffers[0].get_from_buffer()) if i == len(phases) - 1 else None)
+            lambda x: final_value(io_buffers[0].read()) if i == len(phases) - 1 else None)
         amplifiers.append(amp)
 
     # kick off processing by applying the input.
-    io_buffers[0].write_to_buffer(input)
+    io_buffers[0].write(input)
 
 
 def final_value(value):

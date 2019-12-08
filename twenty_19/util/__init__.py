@@ -3,6 +3,8 @@ import abc
 from enum import Enum
 
 #debug = sys.settrace is not None
+from queue import Queue
+
 debug = False
 
 
@@ -227,3 +229,20 @@ class IntCodeComputer:
             instruction_pointer = instr_func.execute(self.memory, op_meta, instruction_pointer)
             if instruction_pointer == -1:
                 return self.memory[0]
+
+
+class IOBuffer:
+    """ Simple queued IO buffer for reading inputs and writing outputs"""
+    def __init__(self, name):
+        self.name = name
+        self.buffer = Queue()
+
+    def read(self):
+        # print("{}RWAIT".format(self.name))
+        val = self.buffer.get(True)
+        # print("{}R{}".format(self.name, val))
+        return val
+
+    def write(self, val):
+        # print("{}W{}".format(self.name, val))
+        self.buffer.put(val)

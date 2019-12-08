@@ -1,4 +1,6 @@
-from twenty_19.day7 import Amplifier, IOBuffer
+from twenty_19.day7 import Amplifier
+from twenty_19.util import IOBuffer
+
 
 def input_from_output(output_func):
     return output_func()
@@ -18,8 +20,8 @@ def amplify(phases, input):
         amp = Amplifier(phase, io_buffers[bufNum - 1], io_buffers[bufNum])
         amplifiers.append(amp)
 
-    io_buffers[0].write_to_buffer(0)
-    return io_buffers[-1].get_from_buffer()
+    io_buffers[0].write(0)
+    return io_buffers[-1].read()
 
 amplifications = []
 for a in range(0,5):

@@ -17,6 +17,7 @@ class Instructions(Enum):
     JMP_FALSE = 6
     LESS_THAN = 7
     EQUALS = 8
+    ALTER_RELATIVE_BASE = 9
     TERM = 99
 
     def __str__(self):
@@ -26,6 +27,7 @@ class Instructions(Enum):
 class ParameterMode(Enum):
     POSITION = 0
     IMMEDIATE = 1
+    RELATIVE = 2
 
     def __repr__(self):
         return self.name
@@ -193,15 +195,51 @@ class LessThan(ReadWriteInstruction):
         return 1 if less_than else 0
 
 
-def print_output(output):
-    print("Output: ", output)
+class AlterRelativeBase(Instruction):
+    def __init__(self):
+        super().__init__(1)
 
-def console_input():
-    return input("Input: ")
+    def execute(self, memory, op_meta, instruction_pointer):
+        input = self.read_params(memory, instruction_pointer, op_meta)
+        memory.relative_base = memory.relative_base + input[0]
+        return instruction_pointer + 2
+
+
+class IODevice:
+    def read(self):
+        return None
+
+    def write(self):
+        pass
+
+
+class UserUI(IODevice):
+    def read(self):
+        return input("Input: ")
+
+    def write(self, value):
+        print("Output: ", value)
+
+
+class IOBuffer(IODevice):
+    """ Simple queued IO buffer for reading inputs and writing outputs"""
+    def __init__(self, name):
+        self.name = name
+        self.buffer = Queue()
+
+    def read(self):
+        # print("{}RWAIT".format(self.name))
+        val = self.buffer.get(True)
+        # print("{}R{}".format(self.name, val))
+        return val
+
+    def write(self, val):
+        # print("{}W{}".format(self.name, val))
+        self.buffer.put(val)
 
 class IntCodeComputer:
-    def __init__(self, memory, input_func=console_input, out_func=print_output):
-        self.memory = list(memory)
+    def __init__(self, memory, input_func=UserUI().read, out_func=UserUI().write):
+        self.memory = Memory(list(memory))
 
         self.instructions = {
             Instructions.ADD: Add(),
@@ -212,6 +250,7 @@ class IntCodeComputer:
             Instructions.JMP_FALSE: JumpIfFalse(),
             Instructions.LESS_THAN: LessThan(),
             Instructions.EQUALS: Equals(),
+            Instructions.ALTER_RELATIVE_BASE: AlterRelativeBase(),
             Instructions.TERM: Term()
         }
 
@@ -229,20 +268,3 @@ class IntCodeComputer:
             instruction_pointer = instr_func.execute(self.memory, op_meta, instruction_pointer)
             if instruction_pointer == -1:
                 return self.memory[0]
-
-
-class IOBuffer:
-    """ Simple queued IO buffer for reading inputs and writing outputs"""
-    def __init__(self, name):
-        self.name = name
-        self.buffer = Queue()
-
-    def read(self):
-        # print("{}RWAIT".format(self.name))
-        val = self.buffer.get(True)
-        # print("{}R{}".format(self.name, val))
-        return val
-
-    def write(self, val):
-        # print("{}W{}".format(self.name, val))
-        self.buffer.put(val)

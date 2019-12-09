@@ -55,27 +55,10 @@ class Instruction:
 
     def read_params(self, memory, instruction_pointer, op_meta):
         return [
-            self.read(memory, memory[instruction_pointer + param_num], op_meta.pmodes[param_num - 1])
+            memory.read(instruction_pointer + param_num, op_meta.pmodes[param_num - 1])
             for param_num
             in range(1, self.param_count + 1)
         ]
-
-    def write(self, memory, address, value):
-        existing = memory[address]
-        if debug:
-            print("Write: &{}, '{} -> {}'".format(address, existing, value))
-        memory[address] = value
-
-    def read(self, memory, address, pmode):
-        if pmode == ParameterMode.POSITION:
-            value = memory[address]
-        elif pmode == ParameterMode.IMMEDIATE:
-            value = address
-        else:
-            raise ValueError("Parameter Mode {} is not supported".format(pmode))
-        if debug:
-            print("Read: &{} = {}".format(address, value))
-        return value
 
 
 class ReadWriteInstruction(Instruction, metaclass=abc.ABCMeta):
@@ -90,7 +73,7 @@ class ReadWriteInstruction(Instruction, metaclass=abc.ABCMeta):
         params = self.read_params(memory, instruction_pointer, op_meta)
         result = self.calculate(params)
         if result is not None:
-            self.write(memory, memory[instruction_pointer + self.param_count + 1], result)
+            memory.write(memory.heap[instruction_pointer + self.param_count + 1], result, op_meta.pmodes[self.param_count])
             return instruction_pointer + self.param_count + 2
         return instruction_pointer + self.param_count + 1
 
@@ -237,6 +220,54 @@ class IOBuffer(IODevice):
         # print("{}W{}".format(self.name, val))
         self.buffer.put(val)
 
+
+class Memory:
+    def __init__(self, heap):
+        self.heap = heap
+        self.relative_base = 0
+
+    def write(self, address, value, pmode):
+        resolved_address = address
+        if pmode == ParameterMode.RELATIVE:
+            resolved_address = address + self.relative_base
+
+        # expand memory if needed to handle the write to a new memory address
+        self.check_memory(resolved_address)
+        existing = self.heap[resolved_address]
+
+        if debug:
+            print("Write: &{}, '{} -> {}'".format(resolved_address, existing, value))
+        self.heap[resolved_address] = value
+
+    def read(self, address, pmode):
+        if pmode == ParameterMode.POSITION:
+            resolved_address = self.heap[address]
+        elif pmode == ParameterMode.IMMEDIATE:
+            resolved_address = address
+        elif pmode == ParameterMode.RELATIVE:
+            resolved_address = self.heap[address] + self.relative_base
+        else:
+            raise ValueError("Parameter Mode {} is not supported".format(pmode))
+
+        # expand memory if needed to handle the read/write
+        self.check_memory(resolved_address)
+        value = self.heap[resolved_address]
+        if debug:
+            print("Read: &{} = {}".format(resolved_address, value))
+        return value
+
+    def check_memory(self, address):
+        """checks the address in memory and expands memory to accommodate if needed"""
+        if address > (len(self.heap) - 1):
+            new_space_required = address - len(self.heap) + 1
+            if debug:
+                print("Extending memory by {} integers".format(new_space_required))
+            self.heap.extend([0] * (address - len(self.heap) + 1))
+
+    def __str__(self):
+        return "relative_base={}, heap={}".format(self.relative_base, self.heap)
+
+
 class IntCodeComputer:
     def __init__(self, memory, input_func=UserUI().read, out_func=UserUI().write):
         self.memory = Memory(list(memory))
@@ -254,17 +285,16 @@ class IntCodeComputer:
             Instructions.TERM: Term()
         }
 
-
     def compute(self):
         """ Computes and intprogram """
         instruction_pointer = 0
         while True:
             if debug:
                 print(self.memory)
-            op_meta = OpMeta(self.memory[instruction_pointer])
+            op_meta = OpMeta(self.memory.heap[instruction_pointer])
             if op_meta.opcode not in self.instructions.keys():
                 raise AssertionError("Unknown Instruction '{}'".format(op_meta))
             instr_func = self.instructions[op_meta.opcode]
             instruction_pointer = instr_func.execute(self.memory, op_meta, instruction_pointer)
             if instruction_pointer == -1:
-                return self.memory[0]
+                return self.memory.read(0, ParameterMode.POSITION)

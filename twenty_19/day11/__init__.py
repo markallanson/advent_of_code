@@ -3,7 +3,6 @@ from enum import IntEnum
 from math import floor
 from twenty_19.day8 import print_image
 
-canvas_size = 100
 
 class Mode(IntEnum):
     PAINT = 0
@@ -24,11 +23,11 @@ class Compass(IntEnum):
 
 
 class Canvas:
-    def __init__(self):
-        self.direction_calculator = range(0, 4)
+    def __init__(self, size):
+        self.canvas_size = size
         self.direction = Compass.NORTH
-        self.curr = (floor(canvas_size/2), floor(canvas_size/2))
-        self.canvas = [[0] * canvas_size for i in range(0, canvas_size)]
+        self.curr = (floor(size/2), floor(size/2))
+        self.canvas = [[0] * size for i in range(0, size)]
         self.mode = Mode.PAINT
         self.painted = set()
 
@@ -71,5 +70,5 @@ class Canvas:
         return self.canvas[self.curr[1]][self.curr[0]]
 
     def print(self):
-        print_image(list(itertools.chain.from_iterable(self.canvas)), canvas_size, canvas_size)
+        print_image(list(itertools.chain.from_iterable(self.canvas)), self.canvas_size, self.canvas_size)
 

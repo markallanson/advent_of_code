@@ -1,9 +1,8 @@
-import sys
 import abc
 from enum import Enum
 
 #debug = sys.settrace is not None
-from queue import Queue
+from twenty_19.util.devices import UserUI
 
 debug = False
 
@@ -91,6 +90,7 @@ class Add(ReadWriteInstruction):
         if debug:
             print("Add {} + {} = {}".format(params[0], params[1], result))
         return result
+
 
 class Multiply(ReadWriteInstruction):
     def __init__(self):
@@ -186,39 +186,6 @@ class AlterRelativeBase(Instruction):
         input = self.read_params(memory, instruction_pointer, op_meta)
         memory.relative_base = memory.relative_base + input[0]
         return instruction_pointer + 2
-
-
-class IODevice:
-    def read(self):
-        return None
-
-    def write(self):
-        pass
-
-
-class UserUI(IODevice):
-    def read(self):
-        return input("Input: ")
-
-    def write(self, value):
-        print("Output: ", value)
-
-
-class IOBuffer(IODevice):
-    """ Simple queued IO buffer for reading inputs and writing outputs"""
-    def __init__(self, name):
-        self.name = name
-        self.buffer = Queue()
-
-    def read(self):
-        # print("{}RWAIT".format(self.name))
-        val = self.buffer.get(True)
-        # print("{}R{}".format(self.name, val))
-        return val
-
-    def write(self, val):
-        # print("{}W{}".format(self.name, val))
-        self.buffer.put(val)
 
 
 class Memory:

@@ -1,5 +1,5 @@
 from twenty_19.day7 import Amplifier
-from twenty_19.util import IOBuffer
+from twenty_19.util.devices import IOBuffer
 
 amplifications = []
 

@@ -23,6 +23,9 @@ def print_image(image, width, height):
             pixel = image[pixel_index]
             if pixel == 1:
                 scan_line.append("█")
+            elif pixel == 2:
+                """Support the Day13 game by drawing a * for the ball :)"""
+                scan_line.append("*")
             else:
                 scan_line.append(" ")
         print("".join(scan_line))

@@ -1,4 +1,3 @@
-from enum import Enum
 from queue import Queue
 
 
@@ -45,37 +44,18 @@ class FrameBuffer(IODevice):
     def write(self, position, value):
         self.memory = self.memory[:position] + value + self.memory[position + len(value):]
 
-class GridScreen(FrameBuffer):
-    class Sprite:
-        def __init__(self, repr):
-            self.repr = repr
+    def dump_memory(self):
+        return self.memory
 
-    def __init__(self, width, height):
-        super().__init__(width * height)
-        self.width = width
-        self.height = height
-        self.y = None
-        self.x = None
-        self.block_count = 0
 
-        self.sprites = {
-            0: self.Sprite([]),
-            1: self.Sprite([1]),
-            2: self.Sprite([1]),
-            3: self.Sprite([1, 1]),
-            4: self.Sprite([1])
-        }
-
-    def write(self, value):
-        if self.x == None:
-            self.x = value
-        elif self.y == None:
-            self.y = value
-        else:
-            print("{}x{}={}".format(self.x, self.y, value))
-            if value == 2:
-                self.block_count += 1
-                print("Block Count: ", self.block_count)
-            super().write((self.y * self.width) + self.x, self.sprites[value].repr)
-            self.y = None
-            self.x = None
+class Joystick(IODevice):
+    """ You can use this to manually play the game for day13 if you like, but it's tedious """
+    def read(self):
+        while (True):
+            direction = input("Dir: ")
+            if direction == "a":
+                return -1
+            if direction == "d":
+                return 1
+            if direction == "w":
+                return 0

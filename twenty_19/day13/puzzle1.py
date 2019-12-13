@@ -1,7 +1,7 @@
 from twenty_19.day13 import input
 from twenty_19.util import IntCodeComputer
-from twenty_19.util.devices import FrameBuffer, GridScreen
+from twenty_19.day13 import GamePlayerDevice
 
-framebuffer = GridScreen(100, 100)
-IntCodeComputer(input.game_program, input_func=framebuffer.read, out_func=framebuffer.write).compute()
-print(framebuffer.memory)
+player = GamePlayerDevice(100, 100)
+IntCodeComputer(input.game_program, input_func=player.read, out_func=player.write).compute()
+print(player.memory)
